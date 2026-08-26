@@ -1,0 +1,3 @@
+# Naive market maker over a momentum strategy
+
+The brief offered two strategy options: a naive market maker (preferred) or a momentum strategy. We committed to the market maker outright, dropping momentum as an alternative. A market maker is a materially better thematic fit for market-making firms generally, pairs naturally with the Order Book already being built (the strategy is both liquidity provider and the thing exercising the book), and keeps faith with the project's explicit "simplicity is the point, not chasing alpha" principle — a momentum strategy invites exactly the kind of alpha-chasing scope creep the brief warns against.

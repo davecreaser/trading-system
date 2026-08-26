@@ -1,0 +1,3 @@
+# C++ deliberately chosen despite being the uncomfortable option
+
+The engine is built in C++, even though the user's strongest languages are TypeScript, Python, and Go, any of which would move faster. This is intentional: the project exists to build genuine fluency in compiled-language systems work and an understanding of latency, memory, and market microstructure — skills a full-stack/product engineering background doesn't build on its own. Retreating to a more comfortable language "to move faster" would defeat the project's actual purpose, so the discomfort is treated as the deliverable, not a cost to be minimized. Anyone (including a future, frustrated instance of the user) wondering why this isn't written in something easier should read this as: that was the point.
