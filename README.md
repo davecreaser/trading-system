@@ -30,7 +30,7 @@ CI runs the same steps on every push/PR — see [`.github/workflows/ci.yml`](./.
 ## Roadmap
 
 - [x] **Foundations**: C++20 scaffold — CMake, Catch2, Google Benchmark, CI.
-- [ ] **Order book**: limit order book with add/cancel/modify/match by price-time priority. Correct and fully tested first, optimised later.
+- [x] **Order book**: limit order book with add/cancel/modify/match by price-time priority. Correct and fully tested first, optimised later.
 - [ ] **Market-data feed**: NASDAQ ITCH parser driving the book.
 - [ ] **Strategy**: a naive market maker — simplicity is the point, not chasing alpha.
 - [ ] **Measurement**: latency (p50/p99/p99.9), throughput, realistic PnL including transaction costs and inventory.

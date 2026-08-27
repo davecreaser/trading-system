@@ -1,5 +1,6 @@
 #include "engine/order_book.hpp"
 #include "engine/order.hpp"
+#include <optional>
 
 namespace engine {
 
@@ -25,67 +26,69 @@ void OrderBook::remove_resting_order(std::list<Order>::iterator iterator) {
     order_index_.erase(id);
 };
 
-AddResult OrderBook::add(Side side, Ticks price, Quantity quantity) {
-    Order order;
-
-    order.id = next_order_id_++;
-    order.price = price;
-    order.quantity = quantity;
-    order.side = side;
-
+AddResult OrderBook::resolve_order(Order order) {
     // If the order crosses
     std::list<Order>::iterator resting_order;
-    Fill fill;
-    bool crossed = false;
-    if (side == Side::Buy) {
-        if (asks_.size() > 0 && asks_.begin()->first <= price) {
-            resting_order = asks_.begin()->second.begin();
-            crossed = true;
-        }
-    } else {
-        if (bids_.size() > 0 && bids_.begin()->first >= price) {
-            resting_order = bids_.begin()->second.begin();
-            crossed = true;
-        }
-    }
+    std::vector<Fill> fills;
+    bool crossed = true;
 
-    if (crossed == true) {
-        OrderLocation location = order_index_.find(resting_order->id)->second;
-        Quantity matched_quantity = quantity;
-        fill.incoming_order_id = order.id;
-        fill.resting_order_id= resting_order->id;
-        fill.price = resting_order->price;
-
-        // Case A: Order quantities are equal
-        if (resting_order->quantity == quantity) {
-            order.quantity = 0;
-            remove_resting_order(location.iterator);
+    while (order.quantity > 0 && crossed == true) {
+        if (order.side == Side::Buy) {
+            if (asks_.size() > 0 && asks_.begin()->first <= order.price) {
+                resting_order = asks_.begin()->second.begin();
+                crossed = true;
+            } else {
+                crossed = false;
+            }
+        } else {
+            if (bids_.size() > 0 && bids_.begin()->first >= order.price) {
+                resting_order = bids_.begin()->second.begin();
+                crossed = true;
+            } else {
+                crossed = false;
+            }
         }
 
-        // Case B: Resting order fully consumed, incoming has leftover
-        else if (resting_order->quantity < quantity) {
-            matched_quantity = resting_order->quantity;
-            order.quantity = quantity - resting_order->quantity;
-            remove_resting_order(location.iterator);
-        }
+        if (crossed == true) {
+            OrderLocation location = order_index_.find(resting_order->id)->second;
+            Quantity matched_quantity = order.quantity;
+            Fill fill;
+            fill.incoming_order_id = order.id;
+            fill.resting_order_id= resting_order->id;
+            fill.price = resting_order->price;
 
-        // Case C: Incoming order fully consumed, resting has leftover
-        else if (resting_order->quantity > quantity) {
-            order.quantity = 0;
-            resting_order->quantity = resting_order->quantity - quantity;
-        }
+            // Case A: Order quantities are equal
+            if (resting_order->quantity == order.quantity) {
+                order.quantity = 0;
+                remove_resting_order(location.iterator);
+            }
 
-        fill.quantity = matched_quantity;
+            // Case B: Resting order fully consumed, incoming has leftover
+            else if (resting_order->quantity < order.quantity) {
+                matched_quantity = resting_order->quantity;
+                order.quantity = order.quantity - resting_order->quantity;
+                remove_resting_order(location.iterator);
+            }
+
+            // Case C: Incoming order fully consumed, resting has leftover
+            else if (resting_order->quantity > order.quantity) {
+                resting_order->quantity = resting_order->quantity - order.quantity;
+                order.quantity = 0;
+            }
+
+            fill.quantity = matched_quantity;
+            fills.push_back(fill);
+        }
     }
 
     // If the order will rest in the book
     if (order.quantity > 0) {
         std::list<Order>::iterator iterator;
 
-        if (side == Side::Buy) {
-            iterator = bids_[price].insert(bids_[price].end(), order);
+        if (order.side == Side::Buy) {
+            iterator = bids_[order.price].insert(bids_[order.price].end(), order);
         } else {
-            iterator = asks_[price].insert(asks_[price].end(), order);
+            iterator = asks_[order.price].insert(asks_[order.price].end(), order);
         }
 
         order_index_[order.id] = OrderLocation{order.side, order.price, iterator};
@@ -95,10 +98,20 @@ AddResult OrderBook::add(Side side, Ticks price, Quantity quantity) {
 
     result.order_id = order.id;
     result.remaining_quantity = order.quantity;
+    result.fills = fills;
 
-    if (crossed) {
-        result.fills.push_back(fill);
-    }
+    return result;
+};
+
+AddResult OrderBook::add(Side side, Ticks price, Quantity quantity) {
+    Order order;
+
+    order.id = next_order_id_++;
+    order.price = price;
+    order.quantity = quantity;
+    order.side = side;
+
+    AddResult result = resolve_order(order);
 
     return result;
 }
@@ -115,6 +128,42 @@ bool OrderBook::cancel(OrderId id) {
 
     return true;
 }
+
+std::optional<AddResult> OrderBook::modify(OrderId id, Ticks new_price, Quantity new_quantity) {
+    auto it = order_index_.find(id);
+    if (it == order_index_.end()) {
+        return std::nullopt;
+    }
+
+    std::list<Order>::iterator order = it->second.iterator;
+    OrderId current_order_id = order->id;
+    Ticks current_price = order->price;
+    Quantity current_quantity = order->quantity;
+    Side current_side = order->side;
+    AddResult result;
+
+    if (new_price == current_price && new_quantity == current_quantity) {
+        result.remaining_quantity = current_quantity;
+        result.order_id = current_order_id;
+        return result;
+    }
+
+    if (new_price == current_price && new_quantity <= current_quantity) {
+        order->quantity = new_quantity;
+        result.order_id = order->id;
+        result.remaining_quantity = new_quantity;
+    } else {
+        remove_resting_order(order);
+        Order new_order;
+        new_order.id = current_order_id;
+        new_order.price = new_price;
+        new_order.quantity = new_quantity;
+        new_order.side = current_side;
+        result = resolve_order(new_order);
+    }
+
+    return result;
+};
 
 std::optional<Ticks> OrderBook::best_bid() const {
     if (bids_.size() == 0) {

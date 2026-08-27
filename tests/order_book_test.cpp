@@ -248,3 +248,161 @@ TEST_CASE("Crossing: a Sell crossing into bids works the same way", "[orderbook]
   REQUIRE(orderbook.bids().size() == 0);
   REQUIRE(orderbook.asks().size() == 0);
 }
+
+TEST_CASE("Crossing: an incoming order walks through multiple price levels", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::Ticks price_level_1 = 1000;
+  engine::Quantity quantity_level_1 = 100;
+
+  engine::Ticks price_level_2 = 995;
+  engine::Quantity quantity_level_2 = 200;
+
+  engine::Quantity quantity_incoming = 120;
+
+  engine::AddResult resting_1 = orderbook.add(engine::Side::Buy, price_level_1, quantity_level_1);
+  engine::AddResult resting_2 = orderbook.add(engine::Side::Buy, price_level_2, quantity_level_2);
+
+  engine::AddResult incoming = orderbook.add(engine::Side::Sell, price_level_2, quantity_incoming);
+
+  REQUIRE(incoming.fills.size() == 2);
+
+  engine::Fill fill_1 = incoming.fills.at(0);
+  REQUIRE(fill_1.incoming_order_id == incoming.order_id);
+  REQUIRE(fill_1.resting_order_id == resting_1.order_id);
+  REQUIRE(fill_1.price == price_level_1);
+  REQUIRE(fill_1.quantity == quantity_level_1);
+
+  engine::Fill fill_2 = incoming.fills.at(1);
+  REQUIRE(fill_2.incoming_order_id == incoming.order_id);
+  REQUIRE(fill_2.resting_order_id == resting_2.order_id);
+  REQUIRE(fill_2.price == price_level_2);
+  REQUIRE(fill_2.quantity == quantity_incoming - quantity_level_1);
+
+  REQUIRE(incoming.remaining_quantity == 0);
+
+  const engine::Bids& bids = orderbook.bids();
+  REQUIRE(bids.size() == 1);
+  REQUIRE(bids.count(price_level_2) == 1);
+  REQUIRE(bids.at(price_level_2).size() == 1);
+  REQUIRE(bids.at(price_level_2).front().id == resting_2.order_id);
+  REQUIRE(bids.at(price_level_2).front().quantity == quantity_level_2 - (quantity_incoming - quantity_level_1));
+
+  REQUIRE(orderbook.asks().size() == 0);
+}
+
+TEST_CASE("Modify: a non-existent order returns nullopt", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  std::optional<engine::AddResult> result = orderbook.modify(999, 1000, 100);
+
+  REQUIRE(result == std::nullopt);
+}
+
+TEST_CASE("Modify: quantity decrease at the same price preserves priority", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::Ticks price = 1005;
+  engine::AddResult a = orderbook.add(engine::Side::Buy, price, 100);
+  engine::AddResult b = orderbook.add(engine::Side::Buy, price, 200);
+
+  std::optional<engine::AddResult> result = orderbook.modify(a.order_id, price, 50);
+
+  REQUIRE(result.has_value());
+  REQUIRE(result->order_id == a.order_id);
+  REQUIRE(result->remaining_quantity == 50);
+  REQUIRE(result->fills.size() == 0);
+
+  const engine::Bids& bids = orderbook.bids();
+  REQUIRE(bids.at(price).size() == 2);
+  REQUIRE(bids.at(price).front().id == a.order_id);
+  REQUIRE(bids.at(price).front().quantity == 50);
+  REQUIRE(bids.at(price).back().id == b.order_id);
+}
+
+TEST_CASE("Modify: quantity increase at the same price loses priority", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::Ticks price = 1005;
+  engine::AddResult a = orderbook.add(engine::Side::Buy, price, 100);
+  engine::AddResult b = orderbook.add(engine::Side::Buy, price, 200);
+
+  std::optional<engine::AddResult> result = orderbook.modify(a.order_id, price, 150);
+
+  REQUIRE(result.has_value());
+  REQUIRE(result->order_id == a.order_id);
+  REQUIRE(result->remaining_quantity == 150);
+  REQUIRE(result->fills.size() == 0);
+
+  const engine::Bids& bids = orderbook.bids();
+  REQUIRE(bids.at(price).size() == 2);
+  REQUIRE(bids.at(price).front().id == b.order_id);
+  REQUIRE(bids.at(price).back().id == a.order_id);
+  REQUIRE(bids.at(price).back().quantity == 150);
+}
+
+TEST_CASE("Modify: price change moves the order to the new price level", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::AddResult a = orderbook.add(engine::Side::Buy, 1000, 100);
+
+  std::optional<engine::AddResult> result = orderbook.modify(a.order_id, 1005, 100);
+
+  REQUIRE(result.has_value());
+  REQUIRE(result->order_id == a.order_id);
+  REQUIRE(result->remaining_quantity == 100);
+  REQUIRE(result->fills.size() == 0);
+
+  const engine::Bids& bids = orderbook.bids();
+  REQUIRE(bids.count(1000) == 0);
+  REQUIRE(bids.size() == 1);
+  REQUIRE(bids.at(1005).size() == 1);
+  REQUIRE(bids.at(1005).front().id == a.order_id);
+  REQUIRE(bids.at(1005).front().quantity == 100);
+}
+
+TEST_CASE("Modify: a price change that becomes marketable crosses the book", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::AddResult resting = orderbook.add(engine::Side::Sell, 1000, 100);
+  engine::AddResult to_modify = orderbook.add(engine::Side::Buy, 990, 50);
+
+  std::optional<engine::AddResult> result = orderbook.modify(to_modify.order_id, 1000, 50);
+
+  REQUIRE(result.has_value());
+  REQUIRE(result->order_id == to_modify.order_id);
+  REQUIRE(result->remaining_quantity == 0);
+  REQUIRE(result->fills.size() == 1);
+
+  engine::Fill fill = result->fills.at(0);
+  REQUIRE(fill.incoming_order_id == to_modify.order_id);
+  REQUIRE(fill.resting_order_id == resting.order_id);
+  REQUIRE(fill.price == 1000);
+  REQUIRE(fill.quantity == 50);
+
+  REQUIRE(orderbook.bids().size() == 0);
+
+  const engine::Asks& asks = orderbook.asks();
+  REQUIRE(asks.size() == 1);
+  REQUIRE(asks.at(1000).size() == 1);
+  REQUIRE(asks.at(1000).front().id == resting.order_id);
+  REQUIRE(asks.at(1000).front().quantity == 50);
+}
+
+TEST_CASE("Modify: a genuine no-op returns a real result, not nullopt", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::AddResult a = orderbook.add(engine::Side::Buy, 1005, 100);
+
+  std::optional<engine::AddResult> result = orderbook.modify(a.order_id, 1005, 100);
+
+  REQUIRE(result.has_value());
+  REQUIRE(result->order_id == a.order_id);
+  REQUIRE(result->remaining_quantity == 100);
+  REQUIRE(result->fills.size() == 0);
+
+  const engine::Bids& bids = orderbook.bids();
+  REQUIRE(bids.at(1005).size() == 1);
+  REQUIRE(bids.at(1005).front().id == a.order_id);
+  REQUIRE(bids.at(1005).front().quantity == 100);
+}

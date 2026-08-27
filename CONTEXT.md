@@ -27,7 +27,7 @@ An opaque handle the Order Book assigns when an order is added. The caller must 
 _Avoid_: Order number
 
 **Ticks**:
-The Order Book's price representation: an integer count of the instrument's minimum price increment (e.g. $10.05 at a $0.01 tick size is the integer 1005). Never a floating-point price — see [ADR-0005](./docs/adr/0005-integer-tick-prices.md).
+The Order Book's price representation: an integer count of the instrument's minimum price increment. Never a floating-point price — see [ADR-0005](./docs/adr/0005-integer-tick-prices.md). Adopts ITCH's own native $0.0001 precision directly (e.g. $10.05 is the integer 100500) rather than converting to the standard $0.01 equity increment — see [ADR-0008](./docs/adr/0008-ticks-adopt-itch-native-precision.md).
 _Avoid_: Price (say Ticks explicitly when precision matters)
 
 **Fill**:
@@ -59,6 +59,17 @@ _Avoid_: Tick (ambiguous — could mean a price increment instead of a feed even
 **Feed**:
 The ordered stream of Messages that drives the Order Book. Distinct from the Order Book itself: the Feed is input, the Book is state.
 _Avoid_: Market data (too generic on its own — use Feed when referring to the stream this system consumes)
+
+**Feed Parser**:
+The Engine component that turns raw ITCH bytes into calls against the Order Book, in three layers: framing (splitting the file into individual Messages' raw bytes), decoding (turning one Message's bytes into a strongly-typed representation), and book-driving (translating decoded Messages into Add/Cancel/Modify calls, filtered to one Stock Locate) — see [ADR-0006](./docs/adr/0006-feed-parser-three-layer-architecture.md). Replays real order flow through the Order Book's own crossing logic rather than trusting ITCH's reported executions as authoritative — see [ADR-0007](./docs/adr/0007-replay-drives-own-crossing-logic.md).
+
+**Stock Locate**:
+ITCH's per-day integer code identifying a symbol, established by a Stock Directory Message at the start of the day and referenced by every subsequent Message for that symbol. Reassigned fresh every trading day — never assume the same Stock Locate means the same symbol on a different day.
+_Avoid_: Symbol code, ticker ID (say Stock Locate when referring specifically to ITCH's own per-day integer)
+
+**ITCH Reference Number**:
+The exchange-assigned integer ITCH uses to identify a specific order within its own protocol — not the Order Book's Order ID. A Replace Message re-keys an order to a *new* ITCH Reference Number even though the Order Book's Modify keeps the same Order ID throughout, so the Feed Parser maintains its own mapping between the two.
+_Avoid_: Order ID (reserved for the Order Book's own identifier; these are never the same number)
 
 ### Strategy
 
