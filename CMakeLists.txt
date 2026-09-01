@@ -31,10 +31,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(benchmark)
 
-add_library(engine_core src/version.cpp src/order_book.cpp)
+add_library(engine_core src/version.cpp src/order_book.cpp src/itch_framing.cpp src/itch_message.cpp)
 target_include_directories(engine_core PUBLIC include)
 
-add_executable(engine_tests tests/version_test.cpp tests/order_test.cpp tests/order_book_test.cpp)
+add_executable(engine_tests tests/version_test.cpp tests/order_test.cpp tests/order_book_test.cpp tests/itch_framing_test.cpp tests/itch_message_test.cpp tests/byte_reader_test.cpp)
 target_link_libraries(engine_tests PRIVATE engine_core Catch2::Catch2WithMain)
 
 enable_testing()
