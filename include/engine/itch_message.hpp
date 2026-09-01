@@ -4,6 +4,7 @@
 #include <span>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace engine {
 
