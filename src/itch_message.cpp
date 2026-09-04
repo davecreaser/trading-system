@@ -1,5 +1,6 @@
 #include "engine/itch_message.hpp"
 #include "engine/byte_reader.hpp"
+#include "engine/order.hpp"
 #include <span>
 
 namespace engine {
@@ -26,6 +27,18 @@ OrderDelete decode_order_delete(std::span<const std::uint8_t> bytes) {
     return order_delete;
 };
 
+AddOrder decode_add_order(std::span<const std::uint8_t> bytes) {
+    AddOrder add_order;
+
+    add_order.stock_locate = read_be<std::uint16_t>(bytes, 1);
+    add_order.order_reference_number = read_be<std::uint64_t>(bytes, 11);
+    add_order.side = bytes[19];
+    add_order.quantity = read_be<std::uint32_t>(bytes, 20);
+    add_order.price = read_be<std::uint32_t>(bytes, 32);
+
+    return add_order;
+};
+
 DecodedMessage decode_message(std::span<const std::uint8_t> bytes) {
     auto message_type = bytes[0];
 
@@ -34,6 +47,10 @@ DecodedMessage decode_message(std::span<const std::uint8_t> bytes) {
             return decode_stock_directory(bytes);
         case 'D':
             return decode_order_delete(bytes);
+        case 'A':
+            return decode_add_order(bytes);
+        case 'F':
+            return decode_add_order(bytes);
         default:
             return UnknownMessage{message_type, std::vector<std::uint8_t>(bytes.begin(), bytes.end())};
     }

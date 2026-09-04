@@ -5,6 +5,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include "engine/order.hpp"
 
 namespace engine {
 
@@ -26,7 +27,17 @@ struct OrderDelete {
 
 OrderDelete decode_order_delete(std::span<const std::uint8_t> bytes);
 
-using DecodedMessage = std::variant<StockDirectory, OrderDelete, UnknownMessage>;
+struct AddOrder {
+    std::uint16_t stock_locate;
+    std::uint64_t order_reference_number;
+    char side;
+    Quantity quantity;
+    Ticks price;
+};
+
+AddOrder decode_add_order(std::span<const std::uint8_t> bytes);
+
+using DecodedMessage = std::variant<StockDirectory, OrderDelete, AddOrder, UnknownMessage>;
 
 DecodedMessage decode_message(std::span<const std::uint8_t> bytes);
 

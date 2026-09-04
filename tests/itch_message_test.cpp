@@ -30,6 +30,26 @@ TEST_CASE("decode_order_delete decodes a hand-crafted Order Delete message", "[i
   REQUIRE(result.order_reference_number == 72623859790382856);
 }
 
+TEST_CASE("decode_add_order decodes a hand-crafted Add Order message", "[itch_message]") {
+  // Add Order (No MPID) layout (engine/docs/itch-5.0-message-formats.md):
+  // offset 0: Message Type "A", offset 1-2: Stock Locate, offset 3-4: Tracking Number,
+  // offset 5-10: Timestamp, offset 11-18: Order Reference Number, offset 19: Buy/Sell,
+  // offset 20-23: Shares, offset 24-31: Stock (unused, not decoded), offset 32-35: Price
+  std::vector<std::uint8_t> bytes{
+      0x41, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x42,
+      0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x0f, 0x42, 0x40};
+
+  engine::AddOrder result = engine::decode_add_order(bytes);
+
+  REQUIRE(result.stock_locate == 42);
+  REQUIRE(result.order_reference_number == 72623859790382856);
+  REQUIRE(result.side == 'B');
+  REQUIRE(result.quantity == 100);
+  REQUIRE(result.price == 1000000);
+}
+
 TEST_CASE("decode_message dispatches a Stock Directory message correctly", "[itch_message]") {
   // same real Stock Directory bytes as above
   std::vector<std::uint8_t> bytes{
@@ -52,6 +72,19 @@ TEST_CASE("decode_message dispatches an Order Delete message correctly", "[itch_
   engine::DecodedMessage result = engine::decode_message(bytes);
 
   REQUIRE(std::holds_alternative<engine::OrderDelete>(result));
+}
+
+TEST_CASE("decode_message dispatches an Add Order message correctly", "[itch_message]") {
+  // same hand-crafted Add Order bytes as above
+  std::vector<std::uint8_t> bytes{
+      0x41, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x42,
+      0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x0f, 0x42, 0x40};
+
+  engine::DecodedMessage result = engine::decode_message(bytes);
+
+  REQUIRE(std::holds_alternative<engine::AddOrder>(result));
 }
 
 TEST_CASE("decode_message falls through to UnknownMessage for an unrecognized type", "[itch_message]") {
