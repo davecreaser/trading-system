@@ -1,9 +1,8 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "engine/itch_framing.hpp"
 
-#include <sstream>
+#include <catch2/catch_test_macros.hpp>
 #include <optional>
+#include <sstream>
 
 TEST_CASE("read_next_message returns one message's payload bytes", "[itch_framing]") {
   std::string bytes{static_cast<char>(0x00), static_cast<char>(0x03), 'a', 'b', 'c'};

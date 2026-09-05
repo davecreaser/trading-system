@@ -1,6 +1,6 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "engine/order.hpp"
+
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("Order holds the fields it was constructed with", "[order]") {
   engine::Order order{1, engine::Side::Buy, 1005, 100};

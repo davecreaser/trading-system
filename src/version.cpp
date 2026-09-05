@@ -2,6 +2,8 @@
 
 namespace engine {
 
-int scaffold_version() { return 0; }
+int scaffold_version() {
+  return 0;
+}
 
 }  // namespace engine

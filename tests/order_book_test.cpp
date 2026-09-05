@@ -1,7 +1,8 @@
+#include "engine/order_book.hpp"
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "engine/order.hpp"
-#include "engine/order_book.hpp"
 
 TEST_CASE("Adding an order works", "[orderbook]") {
   engine::OrderBook orderbook{};
@@ -79,7 +80,8 @@ TEST_CASE("Cancelling a non-existent order returns false and changes nothing", "
   REQUIRE(orderbook.bids().at(1005).size() == 1);
 }
 
-TEST_CASE("Cancelling the middle order at a price level leaves the others in order", "[orderbook]") {
+TEST_CASE("Cancelling the middle order at a price level leaves the others in order",
+          "[orderbook]") {
   engine::OrderBook orderbook{};
 
   engine::AddResult result_A = orderbook.add(engine::Side::Buy, 1005, 100);
@@ -136,7 +138,8 @@ TEST_CASE("best_bid updates when a better-priced order is added", "[orderbook]")
   REQUIRE(orderbook.best_bid() == 1005);
 }
 
-TEST_CASE("best_bid falls back to the next price level when the top level is cancelled", "[orderbook]") {
+TEST_CASE("best_bid falls back to the next price level when the top level is cancelled",
+          "[orderbook]") {
   engine::OrderBook orderbook{};
 
   orderbook.add(engine::Side::Buy, 1000, 100);
@@ -187,7 +190,7 @@ TEST_CASE("Crossing: incoming larger than resting rests the leftover", "[orderbo
   REQUIRE(fill->quantity == quantity_resting);
 
   REQUIRE(incoming.remaining_quantity == quantity_incoming - quantity_resting);
-  
+
   REQUIRE(orderbook.asks().size() == 0);
 
   const engine::Bids& bids = orderbook.bids();
@@ -198,7 +201,8 @@ TEST_CASE("Crossing: incoming larger than resting rests the leftover", "[orderbo
   REQUIRE(bids.at(price).front().id == incoming.order_id);
 }
 
-TEST_CASE("Crossing: incoming smaller than resting leaves it resting at reduced quantity", "[orderbook]") {
+TEST_CASE("Crossing: incoming smaller than resting leaves it resting at reduced quantity",
+          "[orderbook]") {
   engine::OrderBook orderbook{};
 
   engine::Ticks price = 1000;
@@ -286,7 +290,8 @@ TEST_CASE("Crossing: an incoming order walks through multiple price levels", "[o
   REQUIRE(bids.count(price_level_2) == 1);
   REQUIRE(bids.at(price_level_2).size() == 1);
   REQUIRE(bids.at(price_level_2).front().id == resting_2.order_id);
-  REQUIRE(bids.at(price_level_2).front().quantity == quantity_level_2 - (quantity_incoming - quantity_level_1));
+  REQUIRE(bids.at(price_level_2).front().quantity ==
+          quantity_level_2 - (quantity_incoming - quantity_level_1));
 
   REQUIRE(orderbook.asks().size() == 0);
 }

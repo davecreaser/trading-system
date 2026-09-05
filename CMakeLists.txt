@@ -42,3 +42,23 @@ add_test(NAME engine_tests COMMAND engine_tests)
 
 add_executable(engine_benchmarks benchmarks/version_benchmark.cpp)
 target_link_libraries(engine_benchmarks PRIVATE engine_core benchmark::benchmark)
+
+find_program(CLANG_FORMAT_EXE NAMES clang-format
+  HINTS /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin)
+
+if(CLANG_FORMAT_EXE)
+  file(GLOB_RECURSE ALL_SOURCE_FILES
+    ${CMAKE_SOURCE_DIR}/include/*.hpp
+    ${CMAKE_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/tests/*.cpp
+    ${CMAKE_SOURCE_DIR}/benchmarks/*.cpp
+  )
+  add_custom_target(format
+    COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES}
+    COMMENT "Formatting source files with clang-format"
+  )
+  add_custom_target(format-check
+    COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${ALL_SOURCE_FILES}
+    COMMENT "Checking source formatting with clang-format"
+  )
+endif()
