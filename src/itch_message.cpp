@@ -3,7 +3,6 @@
 #include <span>
 
 #include "engine/byte_reader.hpp"
-#include "engine/order.hpp"
 
 namespace engine {
 
@@ -61,6 +60,26 @@ OrderExecutedWithPrice decode_order_executed_with_price(std::span<const std::uin
   return order_executed_with_price;
 }
 
+OrderCancelled decode_order_cancelled(std::span<const std::uint8_t> bytes) {
+  OrderCancelled order_cancelled;
+
+  order_cancelled.order_reference_number = read_be<std::uint64_t>(bytes, 11);
+  order_cancelled.quantity = read_be<std::uint32_t>(bytes, 19);
+
+  return order_cancelled;
+}
+
+OrderReplaced decode_order_replaced(std::span<const std::uint8_t> bytes) {
+  OrderReplaced order_replaced;
+
+  order_replaced.original_order_reference_number = read_be<std::uint64_t>(bytes, 11);
+  order_replaced.new_order_reference_number = read_be<std::uint64_t>(bytes, 19);
+  order_replaced.quantity = read_be<std::uint32_t>(bytes, 27);
+  order_replaced.price = read_be<std::uint32_t>(bytes, 31);
+
+  return order_replaced;
+}
+
 DecodedMessage decode_message(std::span<const std::uint8_t> bytes) {
   auto message_type = bytes[0];
 
@@ -77,6 +96,10 @@ DecodedMessage decode_message(std::span<const std::uint8_t> bytes) {
       return decode_order_executed(bytes);
     case 'C':
       return decode_order_executed_with_price(bytes);
+    case 'X':
+      return decode_order_cancelled(bytes);
+    case 'U':
+      return decode_order_replaced(bytes);
     default:
       return UnknownMessage{message_type, std::vector<std::uint8_t>(bytes.begin(), bytes.end())};
   }

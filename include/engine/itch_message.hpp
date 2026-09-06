@@ -53,8 +53,25 @@ struct OrderExecutedWithPrice {
 
 OrderExecutedWithPrice decode_order_executed_with_price(std::span<const std::uint8_t> bytes);
 
-using DecodedMessage = std::variant<StockDirectory, OrderDelete, AddOrder, OrderExecuted,
-                                    OrderExecutedWithPrice, UnknownMessage>;
+struct OrderCancelled {
+  std::uint64_t order_reference_number;
+  Quantity quantity;
+};
+
+OrderCancelled decode_order_cancelled(std::span<const std::uint8_t> bytes);
+
+struct OrderReplaced {
+  std::uint64_t original_order_reference_number;
+  std::uint64_t new_order_reference_number;
+  Quantity quantity;
+  Ticks price;
+};
+
+OrderReplaced decode_order_replaced(std::span<const std::uint8_t> bytes);
+
+using DecodedMessage =
+    std::variant<StockDirectory, OrderDelete, AddOrder, OrderExecuted, OrderExecutedWithPrice,
+                 OrderCancelled, OrderReplaced, UnknownMessage>;
 
 DecodedMessage decode_message(std::span<const std::uint8_t> bytes);
 

@@ -82,6 +82,39 @@ TEST_CASE(
   REQUIRE(result.price == 1000000);
 }
 
+TEST_CASE("decode_order_cancelled decodes a hand-crafted Order Cancel message", "[itch_message]") {
+  // Order Cancel layout (engine/docs/itch-5.0-message-formats.md):
+  // offset 0: Message Type "X", offset 1-2: Stock Locate, offset 3-4: Tracking Number,
+  // offset 5-10: Timestamp, offset 11-18: Order Reference Number, offset 19-22: Canceled
+  // Shares
+  std::vector<std::uint8_t> bytes{0x58, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+                                  0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x32};
+
+  engine::OrderCancelled result = engine::decode_order_cancelled(bytes);
+
+  REQUIRE(result.order_reference_number == 72623859790382856);
+  REQUIRE(result.quantity == 50);
+}
+
+TEST_CASE("decode_order_replaced decodes a hand-crafted Order Replace message", "[itch_message]") {
+  // Order Replace layout (engine/docs/itch-5.0-message-formats.md):
+  // offset 0: Message Type "U", offset 1-2: Stock Locate, offset 3-4: Tracking Number,
+  // offset 5-10: Timestamp, offset 11-18: Original Order Reference Number, offset 19-26: New
+  // Order Reference Number, offset 27-30: Shares, offset 31-34: Price
+  std::vector<std::uint8_t> bytes{0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                                  0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
+                                  0x00, 0x00, 0x00, 0xc8, 0x00, 0x0f, 0x42, 0x40};
+
+  engine::OrderReplaced result = engine::decode_order_replaced(bytes);
+
+  REQUIRE(result.original_order_reference_number == 72623859790382856);
+  REQUIRE(result.new_order_reference_number == 99);
+  REQUIRE(result.quantity == 200);
+  REQUIRE(result.price == 1000000);
+}
+
 TEST_CASE("decode_message dispatches a Stock Directory message correctly", "[itch_message]") {
   // same real Stock Directory bytes as above
   std::vector<std::uint8_t> bytes{0x52, 0x00, 0x01, 0x00, 0x00, 0x0a, 0x4a, 0x4c, 0xee, 0x55,
@@ -138,6 +171,29 @@ TEST_CASE("decode_message dispatches an Order Executed With Price message correc
   engine::DecodedMessage result = engine::decode_message(bytes);
 
   REQUIRE(std::holds_alternative<engine::OrderExecutedWithPrice>(result));
+}
+
+TEST_CASE("decode_message dispatches an Order Cancel message correctly", "[itch_message]") {
+  // same hand-crafted Order Cancel bytes as above
+  std::vector<std::uint8_t> bytes{0x58, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
+                                  0x06, 0x07, 0x08, 0x00, 0x00, 0x00, 0x32};
+
+  engine::DecodedMessage result = engine::decode_message(bytes);
+
+  REQUIRE(std::holds_alternative<engine::OrderCancelled>(result));
+}
+
+TEST_CASE("decode_message dispatches an Order Replace message correctly", "[itch_message]") {
+  // same hand-crafted Order Replace bytes as above
+  std::vector<std::uint8_t> bytes{0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                                  0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63,
+                                  0x00, 0x00, 0x00, 0xc8, 0x00, 0x0f, 0x42, 0x40};
+
+  engine::DecodedMessage result = engine::decode_message(bytes);
+
+  REQUIRE(std::holds_alternative<engine::OrderReplaced>(result));
 }
 
 TEST_CASE("decode_message falls through to UnknownMessage for an unrecognized type",
