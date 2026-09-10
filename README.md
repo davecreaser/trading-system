@@ -1,39 +1,51 @@
-# trading-system
+# Engine
 
-A limit order book trading system, built from scratch in C++, to learn low-latency engineering.
+A limit order book trading system, built from scratch in C++, replaying real NASDAQ TotalView-ITCH 5.0 market data.
 
-An order book matched by price-time priority, driven by a real NASDAQ ITCH market-data feed, quoted against by a simple market-making strategy — with every component benchmarked. See [`CONTEXT.md`](./CONTEXT.md) for the domain vocabulary and [`docs/adr/`](./docs/adr/) for the design decisions behind it.
+## Build
 
-## Building
-
-Requires CMake 3.24+ and a C++20 compiler.
-
-```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel
+```
+cmake -S . -B build
+cmake --build build
 ```
 
-Run tests:
+## Run the tests
 
-```sh
-ctest --test-dir build --output-on-failure
+```
+./build/engine_tests
 ```
 
-Run benchmarks:
+## Run the benchmarks
 
-```sh
+```
 ./build/engine_benchmarks
 ```
 
-CI runs the same steps on every push/PR — see [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+## Formatting and static analysis
 
-## Roadmap
+```
+cmake --build build --target format        # apply clang-format
+cmake --build build --target format-check   # check formatting, no changes
+cmake --build build --target tidy           # clang-tidy (misc-include-cleaner)
+```
 
-- [x] **Foundations**: C++20 scaffold — CMake, Catch2, Google Benchmark, CI.
-- [x] **Order book**: limit order book with add/cancel/modify/match by price-time priority. Correct and fully tested first, optimised later.
-- [ ] **Market-data feed**: NASDAQ ITCH parser driving the book.
-- [ ] **Strategy**: a naive market maker — simplicity is the point, not chasing alpha.
-- [ ] **Measurement**: latency (p50/p99/p99.9), throughput, realistic PnL including transaction costs and inventory.
-- [ ] **Optimisation arc**: profile → hypothesise → change one thing → measure → keep/revert, with a before/after number for every change.
+## Run the real-data demo
 
-This repository tracks the engine only, synced from a private working repository at each milestone. Issue history and day-to-day notes live there.
+`engine_demo` replays a real trading day's NASDAQ ITCH feed through the order book and reports what happened — messages processed, AAPL's Stock Locate, fills produced, top-of-book changes, and validation results against ITCH's own reported executions.
+
+It needs the real sample file, which isn't bundled in this repo (it's several gigabytes) and is never downloaded automatically:
+
+1. Download NASDAQ's public ITCH 5.0 sample file (a full historical trading day, Jan 30 2019, ~4.76GB compressed):
+   ```
+   curl -O "https://emi.nasdaq.com/ITCH/Nasdaq%20ITCH/01302019.NASDAQ_ITCH50.gz"
+   ```
+2. Decompress it (the demo reads the plain binary file, not the `.gz`):
+   ```
+   gunzip 01302019.NASDAQ_ITCH50.gz
+   ```
+3. Run the demo against it:
+   ```
+   ./build/engine_demo 01302019.NASDAQ_ITCH50
+   ```
+
+This can take a while (millions of messages) — it prints progress to stderr every million messages processed.

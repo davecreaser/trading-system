@@ -74,11 +74,18 @@ _Avoid_: Order ID (reserved for the Order Book's own identifier; these are never
 ### Strategy
 
 **Naive Market Maker**:
-The Engine's strategy: continuously quotes both sides of the market around a reference price and manages Inventory, deliberately simple rather than alpha-seeking — see [ADR-0002](./docs/adr/0002-naive-market-maker-strategy.md).
+The Engine's strategy: continuously quotes both sides of the market around a Reference Price, adjusting for Inventory via Skew, deliberately simple rather than alpha-seeking — see [ADR-0002](./docs/adr/0002-naive-market-maker-strategy.md). Never inserts its own orders into the Order Book — its hypothetical quotes are simulated against the book's real price-time-priority queue instead, so the Order Book stays an untouched reconstruction of real historical activity — see [ADR-0009](./docs/adr/0009-strategy-simulates-fills-shadow-queue.md). Only quotes during regular trading hours, not pre/post-market.
 _Avoid_: Bot, algo (too generic)
 
+**Reference Price**:
+The mid-price (Best Bid plus Best Ask, divided by two) the Naive Market Maker quotes around, recomputed whenever the Order Book's Top of Book changes.
+
+**Skew**:
+The Naive Market Maker's inventory-risk mechanism: both quoted prices shift together, proportional to current Inventory, making it more attractive to trade back toward flat and less attractive to grow Inventory further. Backed by a hard cap that stops quoting a side entirely if Inventory still crosses a limit despite Skew.
+_Avoid_: Adjustment (too vague — Skew is the specific mechanism)
+
 **Inventory**:
-The strategy's net position (contracts held, long or short) accumulated from its own Fills. The risk a market maker manages, not a book-wide concept.
+The strategy's net position (contracts held, long or short) accumulated from its own Fills. The risk a market maker manages, not a book-wide concept. Managed primarily via Skew, backstopped by a hard cap.
 _Avoid_: Position (fine as a close synonym, but prefer Inventory for consistency)
 
 ### Measurement

@@ -1,7 +1,9 @@
 #include "engine/stock_locate.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>

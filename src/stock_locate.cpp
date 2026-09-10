@@ -1,6 +1,9 @@
 #include "engine/stock_locate.hpp"
 
+#include <cstdint>
+#include <istream>
 #include <optional>
+#include <string_view>
 #include <variant>
 
 #include "engine/itch_framing.hpp"

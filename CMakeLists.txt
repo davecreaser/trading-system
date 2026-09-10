@@ -31,10 +31,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(benchmark)
 
-add_library(engine_core src/version.cpp src/order_book.cpp src/itch_framing.cpp src/itch_message.cpp src/stock_locate.cpp)
+add_library(engine_core src/version.cpp src/order_book.cpp src/itch_framing.cpp src/itch_message.cpp src/stock_locate.cpp src/order_book_driver.cpp src/execution_validator.cpp)
 target_include_directories(engine_core PUBLIC include)
 
-add_executable(engine_tests tests/version_test.cpp tests/order_test.cpp tests/order_book_test.cpp tests/itch_framing_test.cpp tests/itch_message_test.cpp tests/byte_reader_test.cpp tests/stock_locate_test.cpp)
+add_executable(engine_tests tests/version_test.cpp tests/order_test.cpp tests/order_book_test.cpp tests/itch_framing_test.cpp tests/itch_message_test.cpp tests/byte_reader_test.cpp tests/stock_locate_test.cpp tests/order_book_driver_test.cpp tests/execution_validator_test.cpp)
 target_link_libraries(engine_tests PRIVATE engine_core Catch2::Catch2WithMain)
 
 enable_testing()
@@ -42,6 +42,9 @@ add_test(NAME engine_tests COMMAND engine_tests)
 
 add_executable(engine_benchmarks benchmarks/version_benchmark.cpp)
 target_link_libraries(engine_benchmarks PRIVATE engine_core benchmark::benchmark)
+
+add_executable(engine_demo demo/replay_demo.cpp)
+target_link_libraries(engine_demo PRIVATE engine_core)
 
 find_program(CLANG_FORMAT_EXE NAMES clang-format
   HINTS /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin)
@@ -52,6 +55,7 @@ if(CLANG_FORMAT_EXE)
     ${CMAKE_SOURCE_DIR}/src/*.cpp
     ${CMAKE_SOURCE_DIR}/tests/*.cpp
     ${CMAKE_SOURCE_DIR}/benchmarks/*.cpp
+    ${CMAKE_SOURCE_DIR}/demo/*.cpp
   )
   add_custom_target(format
     COMMAND ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES}
@@ -60,5 +64,34 @@ if(CLANG_FORMAT_EXE)
   add_custom_target(format-check
     COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${ALL_SOURCE_FILES}
     COMMENT "Checking source formatting with clang-format"
+  )
+endif()
+
+find_program(CLANG_TIDY_EXE NAMES clang-tidy
+  HINTS /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin)
+
+if(CLANG_TIDY_EXE)
+  set(CLANG_TIDY_EXTRA_ARGS "")
+  if(APPLE)
+    # Homebrew's standalone clang-tidy doesn't inherit Xcode's SDK search paths
+    # the way the system compiler does, so standard headers (<cstdint>, etc.)
+    # silently fail to resolve without pointing it at the SDK explicitly.
+    execute_process(
+      COMMAND xcrun --show-sdk-path
+      OUTPUT_VARIABLE MACOS_SDK_PATH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    set(CLANG_TIDY_EXTRA_ARGS --extra-arg=-isysroot${MACOS_SDK_PATH})
+  endif()
+
+  file(GLOB_RECURSE TIDY_SOURCE_FILES
+    ${CMAKE_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/tests/*.cpp
+    ${CMAKE_SOURCE_DIR}/benchmarks/*.cpp
+    ${CMAKE_SOURCE_DIR}/demo/*.cpp
+  )
+  add_custom_target(tidy
+    COMMAND ${CLANG_TIDY_EXE} -p ${CMAKE_BINARY_DIR} ${CLANG_TIDY_EXTRA_ARGS} ${TIDY_SOURCE_FILES}
+    COMMENT "Checking for include-cleanliness with clang-tidy"
   )
 endif()

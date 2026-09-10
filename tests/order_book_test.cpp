@@ -1,6 +1,8 @@
 #include "engine/order_book.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <optional>
+#include <vector>
 
 #include "engine/order.hpp"
 
@@ -410,4 +412,45 @@ TEST_CASE("Modify: a genuine no-op returns a real result, not nullopt", "[orderb
   REQUIRE(bids.at(1005).size() == 1);
   REQUIRE(bids.at(1005).front().id == a.order_id);
   REQUIRE(bids.at(1005).front().quantity == 100);
+}
+
+TEST_CASE("resting_order returns the current state of a resting order", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::AddResult a = orderbook.add(engine::Side::Buy, 1005, 100);
+
+  std::optional<engine::Order> result = orderbook.resting_order(a.order_id);
+
+  REQUIRE(result.has_value());
+  REQUIRE(result->id == a.order_id);
+  REQUIRE(result->side == engine::Side::Buy);
+  REQUIRE(result->price == 1005);
+  REQUIRE(result->quantity == 100);
+}
+
+TEST_CASE("resting_order returns nullopt for an unknown OrderId", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  orderbook.add(engine::Side::Buy, 1005, 100);
+
+  std::optional<engine::Order> result = orderbook.resting_order(9999);
+
+  REQUIRE(result == std::nullopt);
+}
+
+TEST_CASE("Modify: a quantity of zero fully removes the resting order", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::AddResult a = orderbook.add(engine::Side::Buy, 1005, 100);
+
+  std::optional<engine::AddResult> result = orderbook.modify(a.order_id, 1005, 0);
+
+  REQUIRE(result.has_value());
+  REQUIRE(result->order_id == a.order_id);
+  REQUIRE(result->remaining_quantity == 0);
+  REQUIRE(result->fills.size() == 0);
+
+  REQUIRE(orderbook.resting_order(a.order_id) == std::nullopt);
+  REQUIRE(orderbook.bids().empty());
+  REQUIRE(orderbook.best_bid() == std::nullopt);
 }

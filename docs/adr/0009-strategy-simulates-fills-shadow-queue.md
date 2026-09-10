@@ -1,0 +1,5 @@
+# Strategy fills simulated via shadow queue position, not by inserting into the book
+
+Epic 3's market maker needs to know whether its own hypothetical quotes would have filled against real historical order flow. We decided against inserting the strategy's orders as real entries in the Order Book — doing so would let them consume real resting liquidity and change how subsequent real orders match, corrupting the Order Book's role as a faithful reconstruction of what NASDAQ actually reported that day. Instead, the strategy tracks its hypothetical order's position in the book's real price-time-priority queue via a new `depth_at(side, price)` query, computing fills as real order flow consumes real resting volume ahead of it, without ever mutating the book itself.
+
+**Consequences**: this assumes zero market impact — that real order flow would have unfolded identically whether or not the strategy's quotes existed. Real market-making activity does move prices; this is a deliberate simplification, not a claim of full backtest realism, and gets called out explicitly wherever PnL results are reported.

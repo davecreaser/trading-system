@@ -1,6 +1,8 @@
 #include "engine/byte_reader.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <cstdint>
+#include <vector>
 
 TEST_CASE("read_be reads a big-endian uint16_t", "[byte_reader]") {
   std::vector<std::uint8_t> bytes{0x00, 0x03};

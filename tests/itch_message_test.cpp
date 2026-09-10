@@ -1,6 +1,10 @@
 #include "engine/itch_message.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <cstdint>
+#include <stdexcept>
+#include <variant>
+#include <vector>
 
 TEST_CASE("decode_stock_directory decodes a real Stock Directory message", "[itch_message]") {
   // the second message in the real ITCH sample file (data/itch_sample_slice.bin):
@@ -205,4 +209,18 @@ TEST_CASE("decode_message falls through to UnknownMessage for an unrecognized ty
   REQUIRE(std::holds_alternative<engine::UnknownMessage>(result));
   REQUIRE(std::get<engine::UnknownMessage>(result).message_type == 0x5a);
   REQUIRE(std::get<engine::UnknownMessage>(result).bytes == bytes);
+}
+
+TEST_CASE("decode_message throws on an empty message", "[itch_message]") {
+  std::vector<std::uint8_t> bytes{};
+
+  REQUIRE_THROWS_AS(engine::decode_message(bytes), std::runtime_error);
+}
+
+TEST_CASE("decode_add_order throws when the message is too short", "[itch_message]") {
+  // Real Add Order messages need 36 bytes (up through the price field); this one
+  // stops right after the message type, well short of that.
+  std::vector<std::uint8_t> bytes{0x41, 0x00, 0x2a};
+
+  REQUIRE_THROWS_AS(engine::decode_add_order(bytes), std::runtime_error);
 }

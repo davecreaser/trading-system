@@ -1,6 +1,8 @@
 #include "engine/order_book.hpp"
 
+#include <list>
 #include <optional>
+#include <vector>
 
 #include "engine/order.hpp"
 
@@ -144,6 +146,13 @@ std::optional<AddResult> OrderBook::modify(OrderId id, Ticks new_price, Quantity
   Side current_side = order->side;
   AddResult result;
 
+  if (new_quantity == 0) {
+    remove_resting_order(order);
+    result.remaining_quantity = new_quantity;
+    result.order_id = current_order_id;
+    return result;
+  }
+
   if (new_price == current_price && new_quantity == current_quantity) {
     result.remaining_quantity = current_quantity;
     result.order_id = current_order_id;
@@ -182,6 +191,17 @@ std::optional<Ticks> OrderBook::best_ask() const {
 
   return asks_.begin()->first;
 }
+
+std::optional<Order> OrderBook::resting_order(OrderId id) const {
+  auto it = order_index_.find(id);
+  if (it == order_index_.end()) {
+    return std::nullopt;
+  }
+
+  OrderLocation location = it->second;
+
+  return *location.iterator;
+};
 
 const Bids& OrderBook::bids() const {
   return bids_;

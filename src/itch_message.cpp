@@ -1,12 +1,20 @@
 #include "engine/itch_message.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <span>
+#include <stdexcept>
+#include <vector>
 
 #include "engine/byte_reader.hpp"
 
 namespace engine {
 
 StockDirectory decode_stock_directory(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 19) {
+    throw std::runtime_error("decode_stock_directory: message too short");
+  }
+
   StockDirectory stock_directory;
 
   stock_directory.stock_locate = read_be<std::uint16_t>(bytes, 1);
@@ -22,6 +30,10 @@ StockDirectory decode_stock_directory(std::span<const std::uint8_t> bytes) {
 };
 
 OrderDelete decode_order_delete(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 19) {
+    throw std::runtime_error("decode_order_delete: message too short");
+  }
+
   OrderDelete order_delete;
 
   order_delete.order_reference_number = read_be<std::uint64_t>(bytes, 11);
@@ -30,6 +42,10 @@ OrderDelete decode_order_delete(std::span<const std::uint8_t> bytes) {
 };
 
 AddOrder decode_add_order(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 36) {
+    throw std::runtime_error("decode_add_order: message too short");
+  }
+
   AddOrder add_order;
 
   add_order.stock_locate = read_be<std::uint16_t>(bytes, 1);
@@ -42,6 +58,10 @@ AddOrder decode_add_order(std::span<const std::uint8_t> bytes) {
 };
 
 OrderExecuted decode_order_executed(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 23) {
+    throw std::runtime_error("decode_order_executed: message too short");
+  }
+
   OrderExecuted order_executed;
 
   order_executed.order_reference_number = read_be<std::uint64_t>(bytes, 11);
@@ -51,6 +71,10 @@ OrderExecuted decode_order_executed(std::span<const std::uint8_t> bytes) {
 }
 
 OrderExecutedWithPrice decode_order_executed_with_price(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 36) {
+    throw std::runtime_error("decode_order_executed_with_price: message too short");
+  }
+
   OrderExecutedWithPrice order_executed_with_price;
 
   order_executed_with_price.order_reference_number = read_be<std::uint64_t>(bytes, 11);
@@ -61,6 +85,10 @@ OrderExecutedWithPrice decode_order_executed_with_price(std::span<const std::uin
 }
 
 OrderCancelled decode_order_cancelled(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 23) {
+    throw std::runtime_error("decode_order_cancelled: message too short");
+  }
+
   OrderCancelled order_cancelled;
 
   order_cancelled.order_reference_number = read_be<std::uint64_t>(bytes, 11);
@@ -70,6 +98,10 @@ OrderCancelled decode_order_cancelled(std::span<const std::uint8_t> bytes) {
 }
 
 OrderReplaced decode_order_replaced(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 35) {
+    throw std::runtime_error("decode_order_replaced: message too short");
+  }
+
   OrderReplaced order_replaced;
 
   order_replaced.original_order_reference_number = read_be<std::uint64_t>(bytes, 11);
@@ -81,6 +113,10 @@ OrderReplaced decode_order_replaced(std::span<const std::uint8_t> bytes) {
 }
 
 DecodedMessage decode_message(std::span<const std::uint8_t> bytes) {
+  if (bytes.empty()) {
+    throw std::runtime_error("decode_message: empty message");
+  }
+
   auto message_type = bytes[0];
 
   switch (message_type) {
