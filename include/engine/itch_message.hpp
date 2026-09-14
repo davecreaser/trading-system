@@ -69,9 +69,15 @@ struct OrderReplaced {
 
 OrderReplaced decode_order_replaced(std::span<const std::uint8_t> bytes);
 
+struct SystemEvent {
+  char event_code;
+};
+
+SystemEvent decode_system_event(std::span<const std::uint8_t> bytes);
+
 using DecodedMessage =
     std::variant<StockDirectory, OrderDelete, AddOrder, OrderExecuted, OrderExecutedWithPrice,
-                 OrderCancelled, OrderReplaced, UnknownMessage>;
+                 OrderCancelled, OrderReplaced, SystemEvent, UnknownMessage>;
 
 DecodedMessage decode_message(std::span<const std::uint8_t> bytes);
 

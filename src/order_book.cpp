@@ -203,6 +203,30 @@ std::optional<Order> OrderBook::resting_order(OrderId id) const {
   return *location.iterator;
 };
 
+Quantity OrderBook::depth_at(Side side, Ticks price) const {
+  Quantity depth = 0;
+
+  if (side == Side::Buy) {
+    auto it = bids_.find(price);
+    if (it == bids_.end()) {
+      return depth;
+    }
+    for (Order order : it->second) {
+      depth += order.quantity;
+    }
+  } else if (side == Side::Sell) {
+    auto it = asks_.find(price);
+    if (it == asks_.end()) {
+      return depth;
+    }
+    for (Order order : it->second) {
+      depth += order.quantity;
+    }
+  }
+
+  return depth;
+};
+
 const Bids& OrderBook::bids() const {
   return bids_;
 }

@@ -454,3 +454,51 @@ TEST_CASE("Modify: a quantity of zero fully removes the resting order", "[orderb
   REQUIRE(orderbook.bids().empty());
   REQUIRE(orderbook.best_bid() == std::nullopt);
 }
+
+TEST_CASE("depth_at: an empty book has no depth at any price", "[orderbook]") {
+  engine::OrderBook orderbook{};
+
+  engine::Quantity d = orderbook.depth_at(engine::Side::Sell, 300);
+  REQUIRE(d == 0);
+}
+
+TEST_CASE("depth_at: a single resting order returns its quantity", "[orderbook]") {
+  engine::OrderBook orderbook{};
+  orderbook.add(engine::Side::Buy, 1005, 100);
+
+  engine::Quantity d = orderbook.depth_at(engine::Side::Buy, 1005);
+  REQUIRE(d == 100);
+}
+
+TEST_CASE("depth_at: multiple orders at the same price sum together", "[orderbook]") {
+  engine::OrderBook orderbook{};
+  orderbook.add(engine::Side::Buy, 1005, 100);
+  orderbook.add(engine::Side::Buy, 1005, 10);
+
+  engine::Quantity d = orderbook.depth_at(engine::Side::Buy, 1005);
+  REQUIRE(d == 110);
+}
+
+TEST_CASE("depth_at: orders at a different price don't count", "[orderbook]") {
+  engine::OrderBook orderbook{};
+  orderbook.add(engine::Side::Buy, 1005, 100);
+  orderbook.add(engine::Side::Buy, 1000, 10);
+
+  engine::Quantity d = orderbook.depth_at(engine::Side::Buy, 1000);
+  REQUIRE(d == 10);
+}
+
+TEST_CASE("depth_at: reflects state after a cancel or modify", "[orderbook]") {
+  engine::OrderBook orderbook{};
+  engine::AddResult a = orderbook.add(engine::Side::Buy, 1005, 100);
+
+  REQUIRE(orderbook.depth_at(engine::Side::Buy, 1005) == 100);
+
+  orderbook.modify(a.order_id, 1005, 90);
+
+  REQUIRE(orderbook.depth_at(engine::Side::Buy, 1005) == 90);
+
+  orderbook.cancel(a.order_id);
+
+  REQUIRE(orderbook.depth_at(engine::Side::Buy, 1005) == 0);
+}

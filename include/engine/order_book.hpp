@@ -15,6 +15,7 @@ public:
   std::optional<Ticks> best_bid() const;
   std::optional<Ticks> best_ask() const;
   std::optional<Order> resting_order(OrderId id) const;
+  Quantity depth_at(Side side, Ticks price) const;
 
   const Bids& bids() const;
   const Asks& asks() const;

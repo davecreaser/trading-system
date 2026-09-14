@@ -200,6 +200,18 @@ TEST_CASE("decode_message dispatches an Order Replace message correctly", "[itch
   REQUIRE(std::holds_alternative<engine::OrderReplaced>(result));
 }
 
+TEST_CASE("decode_message dispatches a System Event message correctly", "[itch_message]") {
+  // Message Type 'S', Stock Locate 0 (always 0 for this type), Tracking Number 0,
+  // Timestamp 0, Event Code 'Q' (Start of Market Hours)
+  std::vector<std::uint8_t> bytes{0x53, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x00, 0x00, 0x00, 0x51};
+
+  engine::DecodedMessage result = engine::decode_message(bytes);
+
+  REQUIRE(std::holds_alternative<engine::SystemEvent>(result));
+  REQUIRE(std::get<engine::SystemEvent>(result).event_code == 'Q');
+}
+
 TEST_CASE("decode_message falls through to UnknownMessage for an unrecognized type",
           "[itch_message]") {
   std::vector<std::uint8_t> bytes{0x5a, 0x01, 0x02, 0x03};

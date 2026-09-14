@@ -112,6 +112,18 @@ OrderReplaced decode_order_replaced(std::span<const std::uint8_t> bytes) {
   return order_replaced;
 }
 
+SystemEvent decode_system_event(std::span<const std::uint8_t> bytes) {
+  if (bytes.size() < 12) {
+    throw std::runtime_error("decode_system_event: message too short");
+  }
+
+  SystemEvent system_event;
+
+  system_event.event_code = bytes[11];
+
+  return system_event;
+};
+
 DecodedMessage decode_message(std::span<const std::uint8_t> bytes) {
   if (bytes.empty()) {
     throw std::runtime_error("decode_message: empty message");
@@ -136,6 +148,8 @@ DecodedMessage decode_message(std::span<const std::uint8_t> bytes) {
       return decode_order_cancelled(bytes);
     case 'U':
       return decode_order_replaced(bytes);
+    case 'S':
+      return decode_system_event(bytes);
     default:
       return UnknownMessage{message_type, std::vector<std::uint8_t>(bytes.begin(), bytes.end())};
   }

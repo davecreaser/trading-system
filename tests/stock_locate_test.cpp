@@ -38,11 +38,13 @@ std::string stock_directory_message(std::uint16_t stock_locate, const std::strin
   return frame(bytes);
 }
 
-// A minimal non-Stock-Directory message: 'S' (System Event) falls through
-// decode_message's default case, which only captures raw bytes with no further
-// field indexing, so a single-byte payload is safe filler.
+// A minimal non-Stock-Directory message: 'Z' isn't a real ITCH message type, so it
+// falls through decode_message's default case, which only captures raw bytes with
+// no further field indexing, making a single-byte payload safe filler. Don't use a
+// real, acted-on type's byte here (e.g. 'S' for System Event) - those now have real
+// minimum-length requirements of their own and will throw on a too-short payload.
 std::string non_directory_message() {
-  return frame({'S'});
+  return frame({'Z'});
 }
 
 }  // namespace
